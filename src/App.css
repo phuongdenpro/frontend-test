@@ -1,0 +1,132 @@
+:root {
+  --primary: #0066cc;
+  --primary-dark: #004b9f;
+  --surface: #ffffff;
+  --surface-alt: #f8faff;
+  --text: #1a3a52;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --background: #eff3fb;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--background);
+  color: var(--text);
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.app-main {
+  min-height: calc(100vh - 80px);
+  padding: 24px 0 40px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.page-header p {
+  color: var(--muted);
+  max-width: 720px;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  background: var(--surface);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.04);
+  padding: 16px;
+  margin-top: 20px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.9);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-table th {
+  background: #f8fbff;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.admin-table tbody tr:hover {
+  background: rgba(0, 102, 204, 0.04);
+}
+
+.status-chip {
+  display: inline-flex;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  color: white;
+  background: var(--primary);
+}
+
+.loading-screen {
+  min-height: calc(100vh - 80px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text);
+  font-size: 1.05rem;
+  padding: 20px;
+}
+
+@media (max-width: 768px) {
+  .app-main {
+    min-height: calc(100vh - 70px);
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
