@@ -34,7 +34,7 @@ export default function Register() {
       await api.post('/auth/register', {
         email: formData.email,
         password: formData.password,
-        passwordConfirm: formData.passwordConfirm,
+        confirmPassword: formData.passwordConfirm,
         fullName: formData.fullName,
       });
 

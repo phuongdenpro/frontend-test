@@ -24,12 +24,12 @@ export default function Login() {
 
     try {
       const payload = { password };
-    //   if (email.includes('@')) {
-    //     payload.email = email;
-    //   } else {
-    //     payload.username = email;
-    //   }
-      payload.username = email;
+      // if (email.includes('@')) {
+        payload.email = email;
+      // } else {
+      //   payload.username = email;
+      // }
+
 
       await login(payload);
       setMessage({ type: 'success', text: 'Đăng nhập thành công!' });

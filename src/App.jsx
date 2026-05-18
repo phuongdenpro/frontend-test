@@ -8,6 +8,7 @@ import Products from './pages/Products';
 import BuyProduct from './pages/BuyProduct';
 import Users from './pages/Users';
 import Invoices from './pages/Invoices';
+import Profile from './pages/Profile';
 import './App.css';
 
 function App() {
@@ -48,6 +49,14 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Invoices />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
                 </ProtectedRoute>
               }
             />

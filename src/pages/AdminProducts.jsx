@@ -7,10 +7,15 @@ export default function AdminProducts() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: '', text: '' });
   const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
 
   useEffect(() => {
     fetchProducts();
-  }, []);
+  }, [currentPage, pageSize, searchTerm, minPrice, maxPrice]);
 
   const getArray = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -25,8 +30,29 @@ export default function AdminProducts() {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.get('/admin/products');
-      setProducts(getArray(response.data));
+      const params = new URLSearchParams({
+        page: currentPage,
+        pageSize: pageSize,
+        keyword: searchTerm,
+      });
+      
+      if (minPrice) params.append('minPrice', minPrice);
+      if (maxPrice) params.append('maxPrice', maxPrice);
+
+      const response = await api.get(`/admin/products?${params.toString()}`);
+      const data = response.data?.data || response.data;
+      
+      // Xử lý response có phân trang
+      if (data?.items && Array.isArray(data.items)) {
+        setProducts(data.items);
+        setTotalProducts(data.totalCount || data.items.length);
+      } else if (Array.isArray(data)) {
+        setProducts(data);
+        setTotalProducts(data.length);
+      } else {
+        setProducts(getArray(data));
+      }
+      
       setMessage({ type: '', text: '' });
     } catch (error) {
       setMessage({
@@ -38,11 +64,9 @@ export default function AdminProducts() {
     }
   };
 
-  const filteredProducts = products.filter((product) =>
-    getProductName(product).toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
   if (loading) return <div className="container"><p>Đang tải...</p></div>;
+
+  const totalPages = Math.ceil(totalProducts / pageSize) || 1;
 
   return (
     <div className="container">
@@ -54,13 +78,61 @@ export default function AdminProducts() {
         </div>
       )}
 
-      <div className="search-box">
-        <input
-          type="text"
-          placeholder="Tìm kiếm sản phẩm..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="filter-section">
+        <div className="search-box">
+          <input
+            type="text"
+            placeholder="Tìm kiếm sản phẩm..."
+            value={searchTerm}
+            onChange={(e) => {
+              setSearchTerm(e.target.value);
+              setCurrentPage(1);
+            }}
+          />
+        </div>
+
+        <div className="filter-row">
+          <div className="filter-group">
+            <label>Giá tối thiểu</label>
+            <input
+              type="number"
+              placeholder="Min Price"
+              value={minPrice}
+              onChange={(e) => {
+                setMinPrice(e.target.value);
+                setCurrentPage(1);
+              }}
+              min="0"
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Giá tối đa</label>
+            <input
+              type="number"
+              placeholder="Max Price"
+              value={maxPrice}
+              onChange={(e) => {
+                setMaxPrice(e.target.value);
+                setCurrentPage(1);
+              }}
+              min="0"
+            />
+          </div>
+
+          <div className="filter-group">
+            <label>Số lượng / trang</label>
+            <select value={pageSize} onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
+        </div>
       </div>
 
       <div className="table-responsive">
@@ -75,14 +147,14 @@ export default function AdminProducts() {
             </tr>
           </thead>
           <tbody>
-            {filteredProducts.length === 0 ? (
+            {products.length === 0 ? (
               <tr>
                 <td colSpan="5" className="no-data">
                   Không có sản phẩm nào
                 </td>
               </tr>
             ) : (
-              filteredProducts.map((product) => (
+              products.map((product) => (
                 <tr key={product.id}>
                   <td>{product.id}</td>
                   <td className="product-name">{getProductName(product)}</td>
@@ -96,16 +168,62 @@ export default function AdminProducts() {
         </table>
       </div>
 
+      <div className="pagination-section">
+        <div className="pagination-info">
+          <p>Trang <strong>{currentPage}</strong> / <strong>{totalPages}</strong> | Tổng: <strong>{totalProducts}</strong> sản phẩm</p>
+        </div>
+
+        <div className="pagination-controls">
+          <button 
+            onClick={() => setCurrentPage(1)} 
+            disabled={currentPage === 1}
+            className="btn btn-pagination"
+          >
+            ⏮ Đầu
+          </button>
+
+          <button 
+            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} 
+            disabled={currentPage === 1}
+            className="btn btn-pagination"
+          >
+            ◀ Trước
+          </button>
+
+          <div className="page-input">
+            <input 
+              type="number" 
+              min="1" 
+              max={totalPages}
+              value={currentPage}
+              onChange={(e) => {
+                const page = Math.min(Math.max(1, Number(e.target.value)), totalPages);
+                setCurrentPage(page);
+              }}
+            />
+            <span>/ {totalPages}</span>
+          </div>
+
+          <button 
+            onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} 
+            disabled={currentPage === totalPages}
+            className="btn btn-pagination"
+          >
+            Sau ▶
+          </button>
+
+          <button 
+            onClick={() => setCurrentPage(totalPages)} 
+            disabled={currentPage === totalPages}
+            className="btn btn-pagination"
+          >
+            Cuối ⏭
+          </button>
+        </div>
+      </div>
+
       <div className="table-stats">
-        <p>Tổng sản phẩm: <strong>{filteredProducts.length}</strong></p>
-        <p>
-          Tổng giá trị:
-          <strong>
-            ${filteredProducts
-              .reduce((sum, p) => sum + p.price * p.quantity, 0)
-              .toFixed(2)}
-          </strong>
-        </p>
+        <p>Đang hiển thị sản phẩm từ <strong>{(currentPage - 1) * pageSize + 1}</strong> đến <strong>{Math.min(currentPage * pageSize, totalProducts)}</strong></p>
       </div>
     </div>
   );

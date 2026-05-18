@@ -51,14 +51,19 @@ export default function Navbar() {
               {isAdmin && (
                 <>
                   <NavLink to="/users" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
-                    Quản lý khách hàng
+                    Khách hàng
                   </NavLink>
                 </>
               )}
 
-              <div className="user-info">
-                <span className="user-name">{user.fullName || user.username || user.email || 'Người dùng'}</span>
+              <NavLink to="/profile" className={({ isActive }) => `nav-link ${isActive ? 'active' : ''}`}>
+                Hồ sơ
+              </NavLink>
+
+              <div className="user-info info-link d-flex flex-column justify-content-center mx-4">
                 {user.role && <span className="user-role">{user.role}</span>}
+                <span className="user-name">{user.fullName || user.username || user.email || 'Người dùng'}</span>
+                
               </div>
 
               <button className="nav-link logout-btn" onClick={handleLogout}>
