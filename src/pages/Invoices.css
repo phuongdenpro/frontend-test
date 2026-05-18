@@ -32,3 +32,35 @@
 .btn-delete:hover {
   background: #dc2626;
 }
+
+.pagination {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+}
+
+.pagination button,
+.pagination select {
+  border: none;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pagination button {
+  background: #0d6efd;
+  color: white;
+}
+
+.pagination button:disabled {
+  background: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.pagination select {
+  border: 1px solid #ddd;
+  background: white;
+}

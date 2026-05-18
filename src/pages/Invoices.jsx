@@ -7,12 +7,27 @@ import customToast from "../components/Toast";
 import "./Invoices.css";
 
 export default function Invoices() {
-  const { isAdmin } = useAuth();
+  const { isAdmin,user } = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [searchTerm, setSearchTerm] = useState("");
   const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(8);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [searchInput, setSearchInput] = useState("");
+  
+  // const [searchTerm, setSearchTerm] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchTerm(searchInput);
+      setPage(1);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchInput]);
 
   const normalizeList = (payload) => {
     if (Array.isArray(payload)) return payload;
@@ -22,17 +37,48 @@ export default function Invoices() {
     return [];
   };
 
+  const formatMoney = (value) => {
+    return Number(value || 0).toLocaleString("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    });
+  };
+
+  const formatDate = (item) => {
+    const value =
+      item.createdAt || item.date || item.orderDate || item.purchasedAt;
+
+    if (!value) return "-";
+
+    return new Date(value).toLocaleString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
+
         const endpoint = isAdmin
           ? "/order-details/admin/all"
           : "/order-details";
-        const response = await api.get(endpoint);
-        console.log(response.data);
+
+        const response = await api.get(endpoint, {
+          params: {
+            Keyword: searchTerm,
+            Page: page,
+            PageSize: pageSize,
+          },
+        });
 
         setOrders(normalizeList(response.data));
+        setTotalPages(response.data.totalPages || 1);
+        setTotalItems(response.data.totalItems || 0);
       } catch (error) {
         setMessage({
           type: "error",
@@ -44,7 +90,7 @@ export default function Invoices() {
     };
 
     fetchOrders();
-  }, [isAdmin]);
+  }, [isAdmin, searchTerm, page, pageSize]);
 
   const getUserName = (item) => {
     return (
@@ -62,7 +108,7 @@ export default function Invoices() {
   const getQuantity = (item) =>
     item.quantity ?? item.qty ?? item.orderQuantity ?? 0;
   const getPrice = (item) =>
-    item.productPrice ?? item.unitPrice ?? item.product?.price ?? 0;
+    item.productPrice ?? item.price ?? item.product?.price ?? 0;
   const getTotal = (item) =>
     item.total ?? item.amount ?? getQuantity(item) * getPrice(item);
   const getDate = (item) => {
@@ -110,22 +156,22 @@ export default function Invoices() {
   };
   const handleView = (order) => {
     alert(`
-Người dùng: ${getUserName(order) || "-"}
+Người dùng: ${getUserName(order) || user?.fullName || "-"}
 Sản phẩm: ${getProductName(order) || "-"}
 Số lượng: ${getQuantity(order)}
-Giá: $${getPrice(order).toFixed(2)}
-Tổng tiền: $${getTotal(order).toFixed(2)}
-Ngày mua: ${getDate(order)}
+Giá: ${formatMoney(getPrice(order))}
+Tổng tiền: ${formatMoney(getTotal(order))}
+Ngày mua: ${formatDate(order)}
   `);
   };
-  const filteredOrders = useMemo(() => {
-    const keyword = searchTerm.toLowerCase();
-    return orders.filter((order) => {
-      const userName = getUserName(order).toLowerCase();
-      const productName = getProductName(order).toLowerCase();
-      return userName.includes(keyword) || productName.includes(keyword);
-    });
-  }, [orders, searchTerm]);
+  // const filteredOrders = useMemo(() => {
+  //   const keyword = searchTerm.toLowerCase();
+  //   return orders.filter((order) => {
+  //     const userName = getUserName(order).toLowerCase();
+  //     const productName = getProductName(order).toLowerCase();
+  //     return userName.includes(keyword) || productName.includes(keyword);
+  //   });
+  // }, [orders, searchTerm]);
 
   if (loading) {
     return (
@@ -156,9 +202,21 @@ Ngày mua: ${getDate(order)}
         <input
           type="text"
           placeholder="Tìm kiếm theo tên user hoặc sản phẩm..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
+        <select
+          value={pageSize}
+          onChange={(e) => {
+            setPageSize(Number(e.target.value));
+            setPage(1);
+          }}
+        >
+          <option value="8">8 / trang</option>
+          <option value="12">12 / trang</option>
+          <option value="20">20 / trang</option>
+          <option value="0">Tất cả</option>
+        </select>
       </div>
 
       <div className="table-responsive">
@@ -176,14 +234,14 @@ Ngày mua: ${getDate(order)}
             </tr>
           </thead>
           <tbody>
-            {filteredOrders.length === 0 ? (
+            {orders.length === 0 ? (
               <tr>
                 <td colSpan={isAdmin ? 7 : 6} className="no-data">
                   Không có hóa đơn nào.
                 </td>
               </tr>
             ) : (
-              filteredOrders.map((order) => {
+              orders.map((order) => {
                 const orderId = order.id || order.orderId || Math.random();
                 return (
                   <tr key={orderId}>
@@ -191,9 +249,9 @@ Ngày mua: ${getDate(order)}
                     {isAdmin && <td>{getUserName(order) || "-"}</td>}
                     <td>{getProductName(order) || "-"}</td>
                     <td>{getQuantity(order)}</td>
-                    <td>${getPrice(order).toFixed(2)}</td>
-                    <td>${getTotal(order).toFixed(2)}</td>
-                    <td>{getDate(order)}</td>
+                    <td>{formatMoney(getPrice(order))}</td>
+                    <td>{formatMoney(getTotal(order))}</td>
+                    <td>{formatDate(order)}</td>
                     {/* <td colSpan={isAdmin ? 8 : 7} className="no-data"></td> */}
                     <td>
                       <div className="action-buttons">
@@ -218,6 +276,19 @@ Ngày mua: ${getDate(order)}
             )}
           </tbody>
         </table>
+      </div>
+      <div className="pagination">
+        <button disabled={page <= 1} onClick={() => setPage(page - 1)}>
+          Trước
+        </button>
+
+        <span>
+          Trang {page} / {totalPages} - Tổng {totalItems} hóa đơn
+        </span>
+
+        <button disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+          Sau
+        </button>
       </div>
     </div>
   );
