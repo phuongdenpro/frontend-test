@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Auth.css';
+import customToast from '../components/Toast';
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -32,15 +33,16 @@ export default function Login() {
 
 
       await login(payload);
-      setMessage({ type: 'success', text: 'Đăng nhập thành công!' });
+      customToast.success("Đăng nhập thành công");
       setTimeout(() => {
         navigate('/products');
       }, 800);
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.message || error.message || 'Đăng nhập thất bại!',
-      });
+      customToast.error("Đăng nhập thất bại!");
+      // setMessage({
+      //   type: 'error',
+      //   text: error.response?.data?.message || error.message || 'Đăng nhập thất bại!',
+      // });
     } finally {
       setLoading(false);
     }

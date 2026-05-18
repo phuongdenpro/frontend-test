@@ -24,6 +24,8 @@ export default function AdminUserProducts() {
     try {
       setLoading(true);
       const response = await api.get('/order-details/admin/all');
+      console.log(response.data);
+      
       setUserProducts(getArray(response.data));
       setMessage({ type: '', text: '' });
     } catch (error) {

@@ -1,9 +1,24 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useSearchParams } from "react-router-dom";
 import { useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import "./BuyProduct.css";
+import customToast from "../components/Toast";
+const useDebounce = (value, delay = 500) => {
+  const [debouncedValue, setDebouncedValue] = useState(value);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [value, delay]);
+
+  return debouncedValue;
+};
 
 export default function BuyProduct() {
   const { isAdmin } = useAuth();
@@ -25,10 +40,25 @@ export default function BuyProduct() {
   const productIdFromUrl = searchParams.get("productId");
   const location = useLocation();
   const productFromList = location.state?.product;
+  const debouncedSearch = useDebounce(searchTerm, 1000);
+  const debouncedMinPrice = useDebounce(minPrice, 1000);
+  const debouncedMaxPrice = useDebounce(maxPrice, 1000);
+  const searchInputRef = useRef(null);
+  const minPriceInputRef = useRef(null);
+  const maxPriceInputRef = useRef(null);
+  const [sortByPrice, setSortByPrice] = useState("");
+  const navigation = useNavigate();
 
   useEffect(() => {
     fetchProducts();
-  }, [currentPage, pageSize, searchTerm, minPrice, maxPrice]);
+  }, [
+    currentPage,
+    pageSize,
+    debouncedSearch,
+    debouncedMinPrice,
+    debouncedMaxPrice,
+    sortByPrice,
+  ]);
 
   useEffect(() => {
     if (isAdmin) {
@@ -84,14 +114,18 @@ export default function BuyProduct() {
       const params = new URLSearchParams({
         Page: currentPage,
         PageSize: pageSize,
-        Keyword: searchTerm,
+        Keyword: debouncedSearch,
       });
 
-      if (minPrice) params.append("MinPrice", minPrice);
-      if (maxPrice) params.append("MaxPrice", maxPrice);
+      if (minPrice) params.append("MinPrice", debouncedMinPrice);
+      if (maxPrice) params.append("MaxPrice", debouncedMaxPrice);
+
+      if (sortByPrice) {
+        params.append("SortByPrice", sortByPrice);
+      }
 
       try {
-        response = await api.get(`/products?${params.toString()}`);
+        response = await api.get(`/admin/products?${params.toString()}`);
       } catch (error) {
         if (error.response?.status === 404) {
           response = await api.get(`/admin/products?${params.toString()}`);
@@ -168,15 +202,14 @@ export default function BuyProduct() {
         payload.userId = Number(selectedUserId);
       }
 
-      await api.post("/orders/buy", payload);
+      await api.post("/order-details/admin", payload);
+      customToast.success("Mua hàng thành công!");
       setMessage({ type: "success", text: "Mua hàng thành công!" });
-      setSelectedProduct(null);
-      setQuantity(1);
 
-      setTimeout(() => {
-        setMessage({ type: "", text: "" });
-      }, 3000);
+      navigation("/invoices");
     } catch (error) {
+      console.log(error);
+      customToast.error("Mua hàng thất bại!");
       setMessage({
         type: "error",
         text: error.response?.data?.message || "Lỗi mua hàng!",
@@ -370,6 +403,22 @@ export default function BuyProduct() {
           </div>
 
           <div className="filter-group">
+            <label>Sắp xếp giá</label>
+
+            <select
+              value={sortByPrice}
+              onChange={(e) => {
+                setSortByPrice(e.target.value);
+                setCurrentPage(1);
+              }}
+            >
+              <option value="">Mặc định</option>
+              <option value="asc">Giá tăng dần</option>
+              <option value="desc">Giá giảm dần</option>
+            </select>
+          </div>
+
+          <div className="filter-group">
             <label>Số lượng / trang</label>
             <select
               value={pageSize}
@@ -382,6 +431,7 @@ export default function BuyProduct() {
               <option value={8}>8</option>
               <option value={12}>12</option>
               <option value={20}>20</option>
+              <option value={0}>Tất cả</option>
             </select>
           </div>
         </div>
@@ -394,22 +444,40 @@ export default function BuyProduct() {
             <p className="no-data">Không có sản phẩm nào</p>
           ) : (
             products.map((product) => {
-              const productId = product.id || product.productId;
+              const isOutOfStock = product.quantity <= 0;
+
               return (
                 <div
-                  key={productId}
-                  className={`product-card ${selectedProduct?.id === productId ? "active" : ""}`}
+                  key={product.id}
+                  className={`product-card ${isOutOfStock ? "disabled" : ""}`}
                   onClick={() => {
-                    setSelectedProduct(product);
-                    setQuantity(1);
+                    if (!isOutOfStock) {
+                      setSelectedProduct(product);
+                      setQuantity(1);
+                    }
+                  }}
+                  style={{
+                    cursor: isOutOfStock ? "not-allowed" : "pointer",
+                    opacity: isOutOfStock ? 0.5 : 1,
                   }}
                 >
                   <h3>{getProductName(product)}</h3>
+
                   <p className="price">${product.price}</p>
+
                   <p className="description">
                     {getProductDescription(product)}
                   </p>
-                  <p className="quantity">Có sẵn: {product.quantity}</p>
+
+                  <p className="quantity">
+                    {isOutOfStock ? (
+                      <strong style={{ color: "red" }}>Hết hàng</strong>
+                    ) : (
+                      <>
+                        Số lượng: <strong>{product.quantity}</strong>
+                      </>
+                    )}
+                  </p>
                 </div>
               );
             })

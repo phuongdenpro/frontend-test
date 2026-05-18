@@ -4,6 +4,7 @@ import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import api from "../api/axios";
 import "./Products.css";
+import customToast from "../components/Toast";
 
 const useDebounce = (value, delay = 500) => {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -47,10 +48,10 @@ export default function Products() {
   const maxPriceInputRef = useRef(null);
   const navigate = useNavigate();
 
-  const handleGoToBuy  = (product) => {
-   navigate("/buy-product", {
-    state: { product }
-  });
+  const handleGoToBuy = (product) => {
+    navigate("/buy-product", {
+      state: { product },
+    });
   };
 
   useEffect(() => {
@@ -112,7 +113,7 @@ export default function Products() {
       }
 
       try {
-        response = await api.get(`/products?${params.toString()}`);
+        response = await api.get(`/admin/products?${params.toString()}`);
       } catch (error) {
         if (error.response?.status === 404) {
           response = await api.get(`/admin/products?${params.toString()}`);
@@ -152,7 +153,7 @@ export default function Products() {
       return null;
     } catch (error) {
       if (error.response?.status === 404 && path.startsWith("/products")) {
-        const adminPath = path.replace("/products", "/admin/products");
+        const adminPath = path.replace("/admin/products", "/admin/products");
         if (method === "post") return await api.post(adminPath, data);
         if (method === "put") return await api.put(adminPath, data);
         if (method === "delete") return await api.delete(adminPath);
@@ -165,13 +166,21 @@ export default function Products() {
     e.preventDefault();
     setMessage({ type: "", text: "" });
 
+    console.log(formData);
+
     try {
       if (editingId) {
-        await callProductEndpoint("put", `/products/${editingId}`, formData);
-        setMessage({ type: "success", text: "Cập nhật sản phẩm thành công!" });
+        await callProductEndpoint(
+          "put",
+          `/admin/products/${editingId}`,
+          formData,
+        );
+        customToast.success("Cập nhật sản phẩm thành công!");
+        // setMessage({ type: "success", text: "Cập nhật sản phẩm thành công!" });
       } else {
-        await callProductEndpoint("post", "/products", formData);
-        setMessage({ type: "success", text: "Thêm sản phẩm thành công!" });
+        await callProductEndpoint("post", "/admin/products", formData);
+        customToast.success("Thêm sản phẩm thành công!");
+        // setMessage({ type: "success", text: "Thêm sản phẩm thành công!" });
       }
       setFormData({
         productName: "",
@@ -198,7 +207,7 @@ export default function Products() {
   const handleEdit = (product) => {
     setEditingId(product.id);
     setFormData({
-      productName: getProductName(product),
+      name: getProductName(product),
       price: product.price,
       description: getProductDescription(product),
       quantity: product.quantity,
@@ -206,14 +215,15 @@ export default function Products() {
     setShowForm(true);
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm("Bạn chắc chắn muốn xóa sản phẩm này?")) return;
+  const handleDelete = async (id, name) => {
+    if (!window.confirm(`Bạn chắc chắn muốn xóa sản phẩm "${name}"?`)) return;
 
     try {
-      await callProductEndpoint("delete", `/products/${id}`);
-      setMessage({ type: "success", text: "Xóa sản phẩm thành công!" });
+      await callProductEndpoint("delete", `/admin/products/${id}`);
+      customToast.success("Xóa sản phẩm thành công!");
       fetchProducts();
     } catch (error) {
+      customToast.error("Xóa sản phẩm thất bại!");
       setMessage({
         type: "error",
         text: error.response?.data?.message || "Lỗi xóa sản phẩm!",
@@ -276,8 +286,8 @@ export default function Products() {
               <label>Tên sản phẩm:</label>
               <input
                 type="text"
-                name="productName"
-                value={formData.productName}
+                name="name"
+                value={formData.name}
                 onChange={handleChange}
                 required
                 placeholder="Nhập tên sản phẩm"
@@ -414,6 +424,7 @@ export default function Products() {
               <option value={8}>8</option>
               <option value={12}>12</option>
               <option value={20}>20</option>
+              <option value={0}>Tất cả</option>
             </select>
           </div>
         </div>
@@ -423,43 +434,65 @@ export default function Products() {
         {products.length === 0 ? (
           <p className="no-data">Không có sản phẩm nào</p>
         ) : (
-          products.map((product) => (
-            <div
-              key={product.id}
-              className="product-card"
-              onClick={() => handleGoToBuy(product)}
-              style={{ cursor: "pointer" }}
-            >
-              <h3>{getProductName(product)}</h3>
-              <p className="price">${product.price}</p>
-              <p className="description">{getProductDescription(product)}</p>
-              <p className="quantity">
-                Số lượng: <strong>{product.quantity}</strong>
-              </p>
-              {isAdmin && (
-                <div className="card-actions">
-                  <button
-                    className="btn btn-edit"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(product);
-                    }}
-                  >
-                    Sửa
-                  </button>
-                  <button
-                    className="btn btn-delete"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(product.id);
-                    }}
-                  >
-                    Xóa
-                  </button>
-                </div>
-              )}
-            </div>
-          ))
+          products.map((product) => {
+            const isOutOfStock = product.quantity <= 0;
+
+            return (
+              <div
+                key={product.id}
+                className={`product-card ${isOutOfStock ? "disabled" : ""}`}
+                onClick={() => {
+                  if (!isOutOfStock) {
+                    handleGoToBuy(product);
+                  }
+                }}
+                style={{
+                  cursor: isOutOfStock ? "not-allowed" : "pointer",
+                  opacity: isOutOfStock ? 0.5 : 1,
+                }}
+              >
+                <h3>{getProductName(product)}</h3>
+
+                <p className="price">${product.price}</p>
+
+                <p className="description">{getProductDescription(product)}</p>
+
+                <p className="quantity">
+                  {isOutOfStock ? (
+                    <strong style={{ color: "red" }}>Hết hàng</strong>
+                  ) : (
+                    <>
+                      Số lượng: <strong>{product.quantity}</strong>
+                    </>
+                  )}
+                </p>
+
+                {isAdmin && (
+                  <div className="card-actions">
+                    <button
+                      className="btn btn-edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleEdit(product);
+                      }}
+                    >
+                      Sửa
+                    </button>
+
+                    <button
+                      className="btn btn-delete"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDelete(product.id, product.name);
+                      }}
+                    >
+                      Xóa
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })
         )}
       </div>
 
