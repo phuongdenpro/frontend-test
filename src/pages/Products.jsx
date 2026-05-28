@@ -28,11 +28,23 @@ export default function Products() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [formData, setFormData] = useState({
-    productName: "",
+    name: "",
     price: "",
     description: "",
     quantity: "",
+    imageUrl: "",
   });
+  const [imageFile, setImageFile] = useState(null);
+  const [imagePreview, setImagePreview] = useState("");
+
+  useEffect(() => {
+    return () => {
+      if (imagePreview && imageFile) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview, imageFile]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
   const [totalProducts, setTotalProducts] = useState(0);
@@ -145,6 +157,26 @@ export default function Products() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0] || null;
+    setImageFile(file);
+
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    } else {
+      setImagePreview(formData.imageUrl || "");
+    }
+  };
+
+  const uploadProductImage = async (productId, file) => {
+    if (!file) return;
+    const uploadData = new FormData();
+    uploadData.append("image", file);
+    await api.post(`/admin/products/${productId}/upload-image`, uploadData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  };
+
   const callProductEndpoint = async (method, path, data = null) => {
     try {
       if (method === "post") return await api.post(path, data);
@@ -166,28 +198,38 @@ export default function Products() {
     e.preventDefault();
     setMessage({ type: "", text: "" });
 
-    console.log(formData);
-
     try {
+      const payload = {
+        name: formData.name,
+        price: formData.price,
+        description: formData.description,
+        quantity: formData.quantity,
+      };
+
+      let savedProductId = editingId;
+
       if (editingId) {
-        await callProductEndpoint(
-          "put",
-          `/admin/products/${editingId}`,
-          formData,
-        );
+        await callProductEndpoint("put", `/admin/products/${editingId}`, payload);
         customToast.success("Cập nhật sản phẩm thành công!");
-        // setMessage({ type: "success", text: "Cập nhật sản phẩm thành công!" });
       } else {
-        await callProductEndpoint("post", "/admin/products", formData);
+        const response = await callProductEndpoint("post", "/admin/products", payload);
+        savedProductId = response?.data?.id || response?.data?.data?.id || response?.data?.product?.id;
         customToast.success("Thêm sản phẩm thành công!");
-        // setMessage({ type: "success", text: "Thêm sản phẩm thành công!" });
       }
+
+      if (imageFile && savedProductId) {
+        await uploadProductImage(savedProductId, imageFile);
+      }
+
       setFormData({
-        productName: "",
+        name: "",
         price: "",
         description: "",
         quantity: "",
+        imageUrl: "",
       });
+      setImageFile(null);
+      setImagePreview("");
       setEditingId(null);
       setShowForm(false);
       fetchProducts();
@@ -211,7 +253,10 @@ export default function Products() {
       price: product.price,
       description: getProductDescription(product),
       quantity: product.quantity,
+      imageUrl: product.imageUrl || product.image || "",
     });
+    setImageFile(null);
+    setImagePreview(product.imageUrl || product.image || "");
     setShowForm(true);
   };
 
@@ -234,7 +279,9 @@ export default function Products() {
   const handleCancel = () => {
     setShowForm(false);
     setEditingId(null);
-    setFormData({ productName: "", price: "", description: "", quantity: "" });
+    setFormData({ name: "", price: "", description: "", quantity: "", imageUrl: "" });
+    setImageFile(null);
+    setImagePreview("");
   };
 
   if (loading)
@@ -331,6 +378,23 @@ export default function Products() {
                 placeholder="Nhập mô tả sản phẩm"
                 rows="3"
               />
+            </div>
+
+            <div className="form-group">
+              <label>Ảnh sản phẩm:</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleImageChange}
+              />
+              {imagePreview && (
+                <div className="image-preview">
+                  <img
+                    src={imagePreview}
+                    alt="Ảnh sản phẩm"
+                  />
+                </div>
+              )}
             </div>
 
             <div className="form-buttons">
@@ -451,6 +515,12 @@ export default function Products() {
                   opacity: isOutOfStock ? 0.5 : 1,
                 }}
               >
+                <div className="product-image-wrapper">
+                  <img
+                    src={product.imageUrl || product.image || "https://via.placeholder.com/320x180?text=No+Image"}
+                    alt={getProductName(product)}
+                  />
+                </div>
                 <h3>{getProductName(product)}</h3>
 
                 <p className="price">${product.price}</p>
