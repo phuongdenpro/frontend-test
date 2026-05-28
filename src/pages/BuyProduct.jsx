@@ -467,6 +467,16 @@ export default function BuyProduct() {
                     opacity: isOutOfStock ? 0.5 : 1,
                   }}
                 >
+                  <div className="product-image-wrapper">
+                    <img
+                      src={
+                        product.imageUrl ||
+                        product.image ||
+                        "https://via.placeholder.com/320x180?text=No+Image"
+                      }
+                      alt={getProductName(product)}
+                    />
+                  </div>
                   <h3>{getProductName(product)}</h3>
 
                   <p className="price">${product.price}</p>
