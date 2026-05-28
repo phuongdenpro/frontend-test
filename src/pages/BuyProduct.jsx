@@ -200,13 +200,19 @@ export default function BuyProduct() {
       };
       if (isAdmin) {
         payload.userId = Number(selectedUserId);
+        await api.post("/order-details/admin", payload);
+        fetchProducts();
+        customToast.success("Mua hàng thành công!");
+        setSelectedProduct(null);
+        setMessage({ type: "success", text: "Mua hàng thành công!" });
+
+        navigation("/invoices");
+      } else {
+        await api.post("/order-details", payload);
+        fetchProducts();
+        customToast.success("Mua hàng thành công!");
+        setSelectedProduct(null);
       }
-
-      await api.post("/order-details/admin", payload);
-      customToast.success("Mua hàng thành công!");
-      setMessage({ type: "success", text: "Mua hàng thành công!" });
-
-      navigation("/invoices");
     } catch (error) {
       console.log(error);
       customToast.error("Mua hàng thất bại!");

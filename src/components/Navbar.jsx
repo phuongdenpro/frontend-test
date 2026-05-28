@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './Navbar.css';
+import api from '../api/axios';
+import customToast from './Toast';
 
 export default function Navbar() {
   const { user, logout, isAdmin } = useAuth();
@@ -11,7 +13,35 @@ export default function Navbar() {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+    customToast.success("Đăng xuất thành công!");
   };
+
+//   const handleLogout = async () => {
+//   try {
+//     const token = localStorage.getItem("token");
+//    await api.post(
+//       "/auth/logout",
+//       {},
+//       {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//         },
+//       }
+//     );
+//     customToast.success("Đăng xuất thành công!");
+//     // navigate('/login');
+//   } catch (error) {
+//     customToast.error(error);
+//     console.log(error);
+//   } finally {
+//     localStorage.removeItem("token");
+//     // localStorage.removeItem("user");
+//     navigate("/login", { replace: true });
+
+//     // setUser(null);
+//   }
+// };
+  
 
   return (
     <nav className="navbar">
